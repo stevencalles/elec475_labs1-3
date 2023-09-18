@@ -12,12 +12,12 @@ from torch.optim import lr_scheduler
 import datetime
 import numpy as np
 import argparse
-from torchsummary import summary
+import torchsummary
 
 cmd = argparse.ArgumentParser()
 cmd.add_argument("-z", type=int, default=8)
-cmd.add_argument("-e", type=int, default=20)
-cmd.add_argument("-b", type=int, default=1024)
+cmd.add_argument("-e", type=int, default=50)
+cmd.add_argument("-b", type=int, default=2048)
 cmd.add_argument("-s", type=argparse.FileType("w"))
 cmd.add_argument("-p", type=argparse.FileType("w"))
 args = cmd.parse_args()
@@ -51,27 +51,29 @@ class autoencoderMLP4(nn.Module):
         
 def train(n_epochs, optimizer, model, loss_fn, train_loader, scheduler, device):
     print('training...')
-    model.train()
+    model.train()   # keep track of gradient for backtracking
     losses_train = []
     
     for epoch in range(1, n_epochs+1):
-        print('epoch ', epoch)
+        print('epoch ', epoch)  
         loss_train = 0.0
-        for imgs in train_loader:
-            img, _ = imgs
-            img = img.view(img.size(0), -1)
-            outputs = model(img)
-            loss = loss_fn(outputs, img)
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-            loss_train += loss.item()
+        for imgs in train_loader:   # imgs is a mini batch of data
+            img, _ = imgs   # apparently this is how we unpack the images, it goes images then labels
+            img = img.to(device=device)     # sends image to device
+            img = img.view(img.size(0), -1)     # flattens the image, no idea why or how
+            outputs = model(img)       # forward propagating through the network
+            loss = loss_fn(outputs, img)    # calculate our loss
+            optimizer.zero_grad()   # reset optimizer gradients to zero
+            loss.backward()     # calculate loss gradients
+            optimizer.step()        # iterate the optimization based on loss gradients
+            loss_train += loss.item()       # update value of losses
 
-        scheduler.step(loss_train)
+        scheduler.step(loss_train)      # update some hyperparameters for optimization
 
-        losses_train += [loss_train/len(train_loader)]
+        losses_train += [loss_train/len(train_loader)]      # update value of losses
 
         print('{} Epoch {}, Training loss {}'.format(datetime.datetime.now(), epoch, loss_train/len(train_loader)))
+
     plt.style.use('fivethirtyeight')
     plt.xlabel('Iterations')
     plt.ylabel('Loss')
@@ -82,30 +84,49 @@ train_transform = transforms.Compose([transforms.ToTensor()])
 train_set = MNIST('./data/mnist', train=True, download=True, transform=train_transform)
 dataloader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
 
+# the device gets decided and the variable is declared here
+if torch.cuda.is_available():
+    device = "cuda"
+else:
+    device = "cpu"
+print(f'device being used: {device}\n')
+
 model = autoencoderMLP4()
+model.to(device=device)
 loss_f = nn.MSELoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=1e-5)
 scheduler = lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.1)
-train(num_epochs, optimizer, model, loss_f, dataloader, scheduler, 'cpu')
 
-print(summary(model, input=(1,28,28), batch_size=-1))
+train(num_epochs, optimizer, model, loss_f, dataloader, scheduler, device)
 
-# model.eval()
+print(torchsummary.summary(model, (1, 28*28)))
 
+model.eval()
 
-# for imgs in dataloader:
-#     img, _ = imgs
-#     img = img.view(img.size(0), -1)
-#     with torch.no_grad():
-#         output = model(img)
-#     f = plt.figure()
-#     f.add_subplot(1,2,1)
-#     img = img.view(img.size(0), 1, 28, 28).cpu().data
-#     plt.imshow((img[2], img[3]), cmap='gray')
-#     f.add_subplot(1,2,2)
-#     output = output.view(output.size(0), 1, 28, 28).cpu().data
-#     plt.imshow((output[2], output[3]), cmap='gray')
-#     plt.show()
+images = []
+
+for i in range(10):
+    images.append(train_set.data[np.random.randint(0, len(train_set))])
+    
+images = torch.stack(images)
+images = images.view(images.size(0), -1)
+images = images.type(torch.float32)
+images = Variable(images).to(device)
+with torch.no_grad():
+    output = model(images).to(device)
+
+output = output.cpu()
+images = images.cpu()
+output = output.reshape(-1, 28, 28)
+images = images.reshape(-1, 28, 28)
+
+for i in range(10):
+    f = plt.figure()
+    f.add_subplot(1,2, 1)
+    plt.imshow(images[i], cmap='gray')
+    f.add_subplot(1,2, 2)
+    plt.imshow(output[i], cmap='gray')
+    plt.show(block=True)
 
 # -z bottleneck
 # -e epochs

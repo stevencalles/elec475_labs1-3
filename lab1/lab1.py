@@ -113,7 +113,7 @@ for i, current_image in enumerate(images_with_noise):
     f.add_subplot(1,3,3)
     plt.imshow(output[i].reshape(28, 28), cmap='gray')
     plt.show(block=True)
-
+# end of part 5
 
 model.train()
 images = []
@@ -123,37 +123,38 @@ for i in range(2):
     current_image = dataloader.dataset[training_image_idx][0]
     images.append(current_image)
 
-
 images = torch.stack(images)
 images = images.view(images.size(0), -1)
 images = images.type(torch.float32)
 images = Variable(images).to(device)
+
 with torch.no_grad():
     bottleneck_tensors = model.encode(images).to(device)
-    interpolated = torch.lerp(images[0], images[1], 0.5)
-    #print(interpolated)
-    output = model.decode(bottleneck_tensors).to(device)
+    output = []
+    for i in range(1, 10):
+        weight = i / 9
+        interpolated = torch.lerp(bottleneck_tensors[0], bottleneck_tensors[1], weight)
+        output.append(model.decode(interpolated).to(device))
 
-#print(f"the output right after with: {output}")
+output = torch.stack(output)
+output = output.view(output.size(0), -1)
+output = output.type(torch.float32)
+output = Variable(output).to(device)
 
 images = images.cpu()
 output = output.cpu()
 images = images.reshape(-1, 28, 28)
 output = output.reshape(-1, 28, 28)
 
-#print(f"the output right before matplotlib: {output}")
-
 f = plt.figure()
-f.add_subplot(2,2,1)
+f.add_subplot(1,9,1)
 plt.imshow(images[0], cmap='gray')
 
-f.add_subplot(2,2,2)
-plt.imshow(output[0].detach().numpy(), cmap='gray')
+for i in range(2,10):
+    f.add_subplot(1,9,i)
+    plt.imshow(output[i-2].detach().numpy(), cmap='gray')
 
-f.add_subplot(2,2,3)
+f.add_subplot(1,9,10)
 plt.imshow(images[1], cmap='gray')
-
-f.add_subplot(2,2,4)
-plt.imshow(output[1].detach().numpy(), cmap='gray')
 
 plt.show(block=True)

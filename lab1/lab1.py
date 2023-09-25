@@ -66,8 +66,8 @@ model = torch.load(args.l)
 model.eval()
 
 for imgs in dataloader:
-    img, _ = imgs
-    img = img.view(img.size(0), -1)
+    img, _ = imgs       # grabs images, THEN labels
+    img = img.view(img.size(0), -1) # flatten images
     img = Variable(img).to(device)
     with torch.no_grad():
         outputs = model(img).to(device)
@@ -80,6 +80,7 @@ for idx in np.arange(3):
     plt.subplot(2, 10, idx+11)
     plt.imshow(outputs[idx].cpu().detach().numpy().reshape(28, 28), cmap='gray')
 plt.show()
+# end of part 4
 
 normal_images = []
 images_with_noise = []
@@ -88,7 +89,7 @@ for i in range(3):
     training_image_idx = np.random.randint(0, len(dataloader.dataset))   # get a random number from 0 to the length of the training set
     current_image = dataloader.dataset[training_image_idx][0]
     normal_images.append(current_image)    # append the normal image to this list
-    noise = torch.randn(current_image.size()) * 0.2
+    noise = torch.randn(current_image.size()) * 0.2     # to create noise, use randn and multiply by some number
     images_with_noise.append(current_image + noise)    # append the noisy image to this list
     
 images_with_noise = torch.stack(images_with_noise)
@@ -131,8 +132,8 @@ images = Variable(images).to(device)
 with torch.no_grad():
     bottleneck_tensors = model.encode(images).to(device)
     output = []
-    for i in range(1, 10):
-        weight = i / 9
+    for i in range(1, 9):
+        weight = i / 8
         interpolated = torch.lerp(bottleneck_tensors[0], bottleneck_tensors[1], weight)
         output.append(model.decode(interpolated).to(device))
 
@@ -147,14 +148,14 @@ images = images.reshape(-1, 28, 28)
 output = output.reshape(-1, 28, 28)
 
 f = plt.figure()
-f.add_subplot(1,9,1)
+f.add_subplot(1,10,1)
 plt.imshow(images[0], cmap='gray')
 
 for i in range(2,10):
-    f.add_subplot(1,9,i)
+    f.add_subplot(1,10,i)
     plt.imshow(output[i-2].detach().numpy(), cmap='gray')
 
-f.add_subplot(1,9,10)
+f.add_subplot(1,10,10)
 plt.imshow(images[1], cmap='gray')
 
 plt.show(block=True)

@@ -16,7 +16,7 @@ import argparse
 import torchsummary
 
 cmd = argparse.ArgumentParser()
-cmd.add_argument("-l", type=str)
+cmd.add_argument("-l", type=str, default="MLP.8.pth")
 args = cmd.parse_args()
 
 train_transform = transforms.Compose([transforms.ToTensor()])

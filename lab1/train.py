@@ -18,8 +18,8 @@ cmd = argparse.ArgumentParser()
 cmd.add_argument("-z", type=int, default=8)
 cmd.add_argument("-e", type=int, default=50)
 cmd.add_argument("-b", type=int, default=2048)
-cmd.add_argument("-s", type=str)
-cmd.add_argument("-p", type=str)
+cmd.add_argument("-s", type=str, default="MLP.8.pth")
+cmd.add_argument("-p", type=str, default="loss.MLP.8.png")
 args = cmd.parse_args()
 
 num_epochs = args.e
@@ -91,7 +91,7 @@ def train(n_epochs, optimizer, model, loss_fn, train_loader, scheduler, device):
             optimizer.step()
             loss_train += loss.item()
 
-        #scheduler.step(loss_train)
+        scheduler.step(loss_train)
 
         losses_train += [loss_train/len(train_loader)]
 

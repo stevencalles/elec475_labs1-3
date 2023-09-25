@@ -16,7 +16,7 @@ import argparse
 import torchsummary
 
 cmd = argparse.ArgumentParser()
-cmd.add_argument("-l", type=str)
+cmd.add_argument("-l", type=str, default="MLP.8.pth")
 args = cmd.parse_args()
 
 train_transform = transforms.Compose([transforms.ToTensor()])
@@ -154,7 +154,7 @@ for i in range(2,10):
     f.add_subplot(1,9,i)
     plt.imshow(output[i-2].detach().numpy(), cmap='gray')
 
-f.add_subplot(1,9,10)
+f.add_subplot(1,9,9)
 plt.imshow(images[1], cmap='gray')
 
 plt.show(block=True)

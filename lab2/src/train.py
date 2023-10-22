@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 import datetime
 from custom_dataset import custom_dataset as CustomDataset
 
+
 cmd = argparse.ArgumentParser()
 cmd.add_argument("-content_dir", type=str, help="directory to the content images")
 cmd.add_argument("-style_dir", type=str, help="directory to the style images")
@@ -60,8 +61,8 @@ style_transform = train_transform()
 
 content_dataset = CustomDataset(args.content_dir, content_transform)
 style_dataset = CustomDataset(args.style_dir, style_transform)
-content_iter = iter(DataLoader(content_dataset, batch_size=args.b, shuffle=True))
-style_iter = iter(DataLoader(style_dataset, batch_size=args.b, shuffle=True))
+content_iter = DataLoader(content_dataset, batch_size=args.b, shuffle=True)
+style_iter = DataLoader(style_dataset, batch_size=args.b, shuffle=True)
 device = torch.device(args.cuda)
 print(f"selected device for training: {device}")
 
@@ -83,10 +84,10 @@ def train(num_epochs, optimizer, model, content_loader, style_loader, device):
         style_loss = 0.0
         content_loss = 0.0
 
-        for batch in range(1, 126):
-            content_imgs = next(content_loader).to(device)
-            style_imgs = next(style_loader).to(device)
-            loss_c, loss_s = model(content_imgs, style_imgs)
+        for batch in range(batch_size):
+            content_imgs = next(iter(content_loader)).to(device)
+            style_imgs = next(iter(style_loader)).to(device)
+            loss_c, loss_s = model.forward(content_imgs, style_imgs)
             loss_s *= gamma
             loss = loss_c + loss_s
 
@@ -103,15 +104,21 @@ def train(num_epochs, optimizer, model, content_loader, style_loader, device):
         total_losses.append(total_loss.item())
 
         print('{} Epoch {}, Training loss {}, Content loss: {}, Style loss: {}'.format(datetime.datetime.now(), epoch, total_loss, content_loss, style_loss))
+    
+    # total_loss.detach()
+    # content_loss.detach()
+    # style_loss.detach()
 
-
+    # total_loss = total_loss.cpu()
+    # content_loss = content_loss.cpu()
+    # style_loss = style_loss.cpu() 
 
     plt.style.use('fivethirtyeight')
     plt.xlabel('Epochs')
     plt.ylabel('Training Loss')
-    plt.plot(total_loss, color='r', label='loss')
-    plt.plot(content_loss, color='g', label='content loss')
-    plt.plot(style_loss, color='b', label='style loss')
+    plt.plot(total_losses, color='r', label='loss')
+    plt.plot(content_losses, color='g', label='content loss')
+    plt.plot(style_losses, color='b', label='style loss')
     plt.legend()
     plt.show()
     plt.savefig(args.p)

@@ -151,9 +151,9 @@ class AdaIN_net(nn.Module):
             #   calculate Eq. (12) and Eq. (13), and return L_c and L_s from Eq. (11)
             style_features = self.encode(style)   # or encode with intermediate from the github
             content_features = self.encode(content)
-            t = self.adain(content_features, style_features[-1])
-            t = alpha * t + (1 - alpha) * content_features
-            
+            t = self.adain(content_features[3], style_features[-1])
+            t = alpha * t + (1 - alpha) * content_features[3]
+
             g_t = self.decoder(t)
             g_t_features = self.encode(g_t)
 

@@ -1,0 +1,2 @@
+python train.py -content_dir C:\Users\steve\OneDrive\Desktop\eng stuff\FOURTH YEAR\ELEC 475\test project\Lab2\datasets\COCO10k -style_dir C:\Users\steve\OneDrive\Desktop\eng stuff\FOURTH YEAR\ELEC 475\test project\Lab2\datasets\wikiart10k -gamma 1.0 -e 20 -b 32 -l encoder.pth -s decoder.pth -p decoder.png
+python train.py -content_dir ./datasets/COCO100/COCO100/ -style_dir ./datasets/wikiart100/wikiart100/ -gamma 1.0 -e 20 -b 20 -l encoder.pth -s decoder.pth -p decoder.png

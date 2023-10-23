@@ -149,31 +149,30 @@ class AdaIN_net(nn.Module):
         assert 0 <= alpha <= 1
         if self.training:  # training
             #   calculate Eq. (12) and Eq. (13), and return L_c and L_s from Eq. (11)
-            #
-            #   your code here ...
-            relu1_1_c, relu2_1_c, relu3_1_c, relu4_1_c = self.encode(content)
-            relu1_1_s, relu2_1_s, relu3_1_s, relu4_1_s = self.encode(style)
-            relu4_1_c = relu4_1_c.detach()
-            relu4_1_s = relu4_1_s.detach()
+            style_features = self.encode(style)   # or encode with intermediate from the github
+            content_features = self.encode(content)
+            t = self.adain(content_features[3], style_features[-1])
+            t = alpha * t + (1 - alpha) * content_features[3]
 
-            feat = self.adain(relu4_1_c, relu4_1_s)
-            feat = alpha * feat + (1 - alpha) * relu4_1_c
+            g_t = self.decoder(t)
+            g_t_features = self.encode(g_t)
 
-            g_feat = self.decode(feat)
+            loss_c = self.content_loss(g_t_features[-1], t)
+            loss_s = self.style_loss(g_t_features[0], style_features[0])
 
-            loss_c = self.content_loss(g_feat, content)
-            loss_s = self.style_loss(g_feat, style)
+            for i in range(1, 4):
+                loss_s += self.style_loss(g_t_features[i], style_features[i])
 
             return loss_c, loss_s
+        
         else:  # inference
-            #
-            #   your code here ...
-            relu1_1_c, relu2_1_c, relu3_1_c, relu4_1_c = self.encode(content)
-            relu1_1_s, relu2_1_s, relu3_1_s, relu4_1_s = self.encode(style)
-            relu4_1_c = relu4_1_c.detach()
-            relu4_1_s = relu4_1_s.detach()
-            feat = self.adain(relu4_1_c, relu4_1_s)
-            feat = alpha * feat + (1 - alpha) * relu4_1_c
-            feat = self.decode(feat)
-            
-            return feat
+            # run the encoder on style and content images
+            content_features = self.encode(content)
+            style_features = self.encode(style)
+
+            # normalize content feats based on style features
+            feat = self.adain(content_features, style_features[-1])
+            feat = alpha * feat + (1 - alpha) * content_features
+
+            # return stylized image
+            return self.decode(feat)

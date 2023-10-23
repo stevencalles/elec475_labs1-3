@@ -171,8 +171,8 @@ class AdaIN_net(nn.Module):
             style_features = self.encode(style)
 
             # normalize content feats based on style features
-            feat = self.adain(content_features, style_features[-1])
-            feat = alpha * feat + (1 - alpha) * content_features
+            feat = self.adain(content_features[3], style_features[-1])
+            feat = alpha * feat + (1 - alpha) * content_features[3]
 
             # return stylized image
             return self.decode(feat)

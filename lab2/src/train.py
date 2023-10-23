@@ -1,7 +1,7 @@
 import torch
 import torchvision
 from torch import nn
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader, Dataset, Sampler
 from torchvision import transforms
 import os
 from pathlib import Path
@@ -12,7 +12,7 @@ import AdaIN_net
 import matplotlib.pyplot as plt
 import datetime
 from custom_dataset import custom_dataset as CustomDataset
-
+import numpy as np
 
 cmd = argparse.ArgumentParser()
 cmd.add_argument("-content_dir", type=str, help="directory to the content images")
@@ -26,9 +26,31 @@ cmd.add_argument("-p", type=str, help="path to save example image")
 cmd.add_argument("-cuda", type=str, default='cuda', help="determine if we want to use cuda i guess, [y/N]")
 args = cmd.parse_args()
 
-learning_rate = 0.001
-learning_rate_decay = 0.0001
+learning_rate = 0.0001
+learning_rate_decay = 0.00001
 
+def InfiniteSampler(n):
+    # i = 0
+    i = n - 1
+    order = np.random.permutation(n)
+    while True:
+        yield order[i]
+        i += 1
+        if i >= n:
+            np.random.seed()
+            order = np.random.permutation(n)
+            i = 0
+
+class InfiniteSamplerWrapper(Sampler):
+    def __init__(self, data_source):
+        super().__init__(data_source)
+        self.num_samples = len(data_source)
+
+    def __iter__(self):
+        return iter(InfiniteSampler(self.num_samples))
+
+    def __len__(self):
+        return 2 ** 31
 
 def train_transform():
     transform_list = [
@@ -70,7 +92,7 @@ total_loss = 0.0
 style_loss = 0.0
 content_loss = 0.0
 
-def train(num_epochs, optimizer, model, content_loader, style_loader, device):
+def train(num_epochs, optimizer, model, content_loader, style_loader, device, scheduler):
     print('training!')
 
     style_losses = []
@@ -79,12 +101,17 @@ def train(num_epochs, optimizer, model, content_loader, style_loader, device):
 
     for epoch in range(1, num_epochs + 1):
         print(f"Epoch: {epoch}")
-        adjust_learning_rate(optimizer, iteration_count=epoch)
         total_loss = 0.0
         style_loss = 0.0
         content_loss = 0.0
 
-        for batch in range(batch_size):
+        batch_total_loss = 0.0
+        batch_content_loss = 0.0
+        batch_style_loss = 0.0
+
+        batch_loop_length = int(len(content_dataset) / batch_size)
+
+        for batch in range(batch_loop_length):
             content_imgs = next(iter(content_loader)).to(device)
             style_imgs = next(iter(style_loader)).to(device)
             loss_c, loss_s = model.forward(content_imgs, style_imgs)
@@ -94,10 +121,18 @@ def train(num_epochs, optimizer, model, content_loader, style_loader, device):
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
+
+            batch_total_loss += loss
+            batch_content_loss += loss_c
+            batch_style_loss += loss_s
+
+        scheduler.step()
+
+        # adjust_learning_rate(optimizer, iteration_count=epoch)
         
-        total_loss = (total_loss + loss) / len(content_loader)
-        style_loss = (style_loss + loss_s) / len(style_loader)
-        content_loss = (content_loss + loss_c) / len(content_loader)
+        total_loss = (batch_total_loss) / batch_loop_length
+        style_loss = (batch_content_loss) / batch_loop_length
+        content_loss = (batch_style_loss) / batch_loop_length
 
         style_losses.append(style_loss.item())
         content_losses.append(content_loss.item())
@@ -116,15 +151,17 @@ def train(num_epochs, optimizer, model, content_loader, style_loader, device):
     plt.style.use('fivethirtyeight')
     plt.xlabel('Epochs')
     plt.ylabel('Training Loss')
-    plt.plot(total_losses, color='r', label='loss')
+    plt.plot(total_losses, color='r', label='total loss')
     plt.plot(content_losses, color='g', label='content loss')
     plt.plot(style_losses, color='b', label='style loss')
     plt.legend()
+    plt.grid(False)
     plt.show()
     plt.savefig(args.p)
 
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate, weight_decay=learning_rate_decay)
-train(num_epochs=num_epochs, optimizer=optimizer, model=model, content_loader=content_iter, style_loader=style_iter, device=device)
+scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma)
+train(num_epochs=num_epochs, optimizer=optimizer, model=model, content_loader=content_iter, style_loader=style_iter, device=device, scheduler=scheduler)
 
 state_dict = AdaIN_net.encoder_decoder.decoder.state_dict()
 torch.save(state_dict, args.s)

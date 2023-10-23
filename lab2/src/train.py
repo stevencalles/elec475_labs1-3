@@ -29,29 +29,6 @@ args = cmd.parse_args()
 learning_rate = 0.0001
 learning_rate_decay = 0.00001
 
-def InfiniteSampler(n):
-    # i = 0
-    i = n - 1
-    order = np.random.permutation(n)
-    while True:
-        yield order[i]
-        i += 1
-        if i >= n:
-            np.random.seed()
-            order = np.random.permutation(n)
-            i = 0
-
-class InfiniteSamplerWrapper(Sampler):
-    def __init__(self, data_source):
-        super().__init__(data_source)
-        self.num_samples = len(data_source)
-
-    def __iter__(self):
-        return iter(InfiniteSampler(self.num_samples))
-
-    def __len__(self):
-        return 2 ** 31
-
 def train_transform():
     transform_list = [
         transforms.Resize(size=(512, 512)),
@@ -59,12 +36,6 @@ def train_transform():
         transforms.ToTensor()
     ]
     return transforms.Compose(transform_list)
-
-    
-def adjust_learning_rate(optimizer, iteration_count):
-    lr = learning_rate / (1.0 + learning_rate_decay * iteration_count)
-    for param_group in optimizer.param_groups:
-        param_group['lr'] = lr
 
 num_epochs = args.e
 batch_size = args.b
@@ -139,14 +110,6 @@ def train(num_epochs, optimizer, model, content_loader, style_loader, device, sc
         total_losses.append(total_loss.item())
 
         print('{} Epoch {}, Training loss {}, Content loss: {}, Style loss: {}'.format(datetime.datetime.now(), epoch, total_loss, content_loss, style_loss))
-    
-    # total_loss.detach()
-    # content_loss.detach()
-    # style_loss.detach()
-
-    # total_loss = total_loss.cpu()
-    # content_loss = content_loss.cpu()
-    # style_loss = style_loss.cpu() 
 
     plt.style.use('fivethirtyeight')
     plt.xlabel('Epochs')

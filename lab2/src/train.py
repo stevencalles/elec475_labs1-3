@@ -37,6 +37,12 @@ def train_transform():
     ]
     return transforms.Compose(transform_list)
 
+use_cuda = False
+if args.cuda == 'y' or args.cuda == 'Y':
+    use_cuda = True
+
+device = torch.device("cuda" if use_cuda else "cpu")
+
 num_epochs = args.e
 batch_size = args.b
 gamma = args.gamma
@@ -47,7 +53,7 @@ decoder = AdaIN_net.encoder_decoder().decoder
 encoder.load_state_dict(torch.load(args.l))
 encoder = nn.Sequential(*list(encoder.children())[:31])
 model = AdaIN_net.AdaIN_net(encoder, decoder)
-model.train().to(args.cuda)
+model.train().to(device)
 
 content_transform = train_transform()
 style_transform = train_transform()
@@ -56,7 +62,7 @@ content_dataset = CustomDataset(args.content_dir, content_transform)
 style_dataset = CustomDataset(args.style_dir, style_transform)
 content_iter = DataLoader(content_dataset, batch_size=args.b, shuffle=True)
 style_iter = DataLoader(style_dataset, batch_size=args.b, shuffle=True)
-device = torch.device(args.cuda)
+device = torch.device(device)
 print(f"selected device for training: {device}")
 
 total_loss = 0.0

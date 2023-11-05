@@ -65,7 +65,7 @@ def train(num_epochs, optimizer, model, loss_fn, train_loader, scheduler, device
     for epoch in range(1, num_epochs + 1):
         print('Epoch: ', epoch)
         loss_train = 0.0
-        for imgs in range():
+        for imgs in range(batch_loop_length):
             imgs = next(iter(train_loader)).to(device)
             outputs = model(imgs).to(device)
             loss = loss_fn(outputs, imgs)
